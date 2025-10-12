@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>香水随机抽取器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        h1 {
+            color: #8b6b61;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+        
+        .draw-btn {
+            background: #e8b4bc;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 30px 0;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(232, 180, 188, 0.4);
+        }
+        
+        .draw-btn:hover {
+            background: #d9a3ab;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(232, 180, 188, 0.6);
+        }
+        
+        .result-section {
+            display: none;
+            margin: 40px 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #fdf6f0 0%, #f8edeb 100%);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.5s ease;
+            /* 垂直水平居中内容 */
+            display: none; /* 初始隐藏 */
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .result-text {
+            font-size: 1.8rem;
+            color: #8b6b61;
+            margin-bottom: 0;
+            line-height: 1.5;
+            text-align: center; /* 使段落文本水平居中 */
+        }
+        
+        .perfume-name {
+            font-weight: bold;
+            color: #9c89b8;
+            font-size: 2.2rem;
+            display: inline-block;
+            margin: 0 5px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+            animation: namePop 0.5s ease;
+        }
+        
+        /* 已移除“再次抽取”按钮样式；使用单一“开始抽取”按钮重复抽取 */
+        
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .loading-spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #9c89b8;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes namePop {
+            0% { transform: scale(0.8); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            color: #777;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            color: #999;
+            font-size: 0.8rem;
+        }
+        
+        .perfume-count {
+            margin-top: 10px;
+            color: #9c89b8;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>今天用什么香水</h1>
+        
+        <p class="perfume-count">香水库中有 <span id="perfumeCount">0</span> 款香水</p>
+        
+        <button id="drawBtn" class="draw-btn">开始抽取</button>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>正在抽取中...</p>
+        </div>
+        
+        <div class="result-section" id="resultSection">
+            <div class="result-text"> <span class="perfume-name" id="perfumeName">未知香水</span> </div>
+        </div>
+    </div>
+    
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const drawBtn = document.getElementById('drawBtn');
+            const loading = document.getElementById('loading');
+            const resultSection = document.getElementById('resultSection');
+            const perfumeName = document.getElementById('perfumeName');
+            // 已移除单独的“再次抽取”按钮，使用同一个开始按钮重复抽取
+            const perfumeCount = document.getElementById('perfumeCount');
+            
+            // 香水数据
+            const perfumes = [
+                {"name": "莱俪墨恋"},
+                {"name": "奥利弗So Pure如纯男士"},
+                {"name": "祖马珑鼠尾草与海盐"},
+                {"name": "橘滋脏话"},
+                {"name": "阿蒂仙布列塔尼的空气"},
+                {"name": "莫杰雏菊花语"},
+                {"name": "梅森马吉拉温暖壁炉 By the Fireplace"},
+                {"name": "梅森马吉拉爵士酒廊 Jazz Club"},
+                {"name": "阿玛尼寄情男士"},
+                {"name": "解放橘郡你或像你的人"},
+                {"name": "解放橘郡我是垃圾"},
+                {"name": "解放橘郡圣婴"},
+                {"name": "解放橘郡龙与玫瑰"},
+                {"name": "解放橘郡赫曼如影"},
+                {"name": "祖马珑葡萄藤与柏木"},
+                {"name": "解放橘郡我是垃圾"},
+                {"name": "解放橘郡攻壳机动队"},
+                {"name": "爱马仕大地香精"},
+                {"name": "爱马仕大地淡香水"},
+                {"name": "万宝龙探寻旅者"},
+                {"name": "博柏利伦敦男士"},
+                {"name": "解放橘郡攻壳机动队"},
+                {"name": "配枪朱丽叶非香水"},
+                {"name": "配枪朱丽叶莫斯科之骡"},
+                {"name": "艾克卡帕白苔"},
+                {"name": "解放橘郡一无所有"},
+                {"name": "米勒博涛斯双重薄荷"},
+                {"name": "莫若森柑橘之书"},
+                {"name": "纳西索纯粹迷情（精纯麝香）"},
+                {"name": "潘海利根月亮女神"},
+                {"name": "SMN佛罗伦萨天使"},
+                {"name": "SMN扑扑莉"},
+                {"name": "SMN托斯卡诺烟草"},
+                {"name": "液态创想粉色之彼（醉玫瑰）"},
+                {"name": "蒂普提克谭道"},
+                {"name": "芦丹氏修女"},
+                {"name": "潘海利根裁缝"},
+                {"name": "詹姆斯·海利鲜薄荷"},
+                {"name": "阿蒂仙冥府之路馥郁版"},
+                {"name": "梅森马吉拉慵懒周末"},
+                {"name": "梵克雅宝月光广霍"},
+                {"name": "SMN石榴"},
+                {"name": "解放橘郡茉莉与雪茄"},
+                {"name": "解放橘郡牧神的午后"},
+                {"name": "解放橘郡同名古龙"},
+                {"name": "配枪朱丽叶隐衫之欲"},
+                {"name": "爱马仕血色大黄"},
+                {"name": "帝国之香光之呐喊"},
+                {"name": "爱慕回忆录男士"},
+                {"name": "爱慕史诗女士"},
+                {"name": "爱慕玫瑰焚香"},
+                {"name": "蒂普提克水中影"},
+                {"name": "蒂普提克纸上"},
+                {"name": "阿蒂仙淘气野狼"},
+                {"name": "莱俪珍珠美人"},
+                {"name": "古特尔忍冬"},
+                {"name": "娇兰一千零一夜"},
+                {"name": "爱慕间奏曲男士"},
+                {"name": "爱慕秘藏神谕"},
+                {"name": "馥马尔香水出版社窈窕如她（贵妇肖像）"},
+                {"name": "蒂普提克杜耶尔EDT"},
+                {"name": "蒂普提克奥费恩（爵梦）EDP"},
+                {"name": "芦丹氏母狼"},
+                {"name": "娇兰香草甜酒"},
+                {"name": "宾利黑色尊爵"},
+                {"name": "弗拉潘永不复返"},
+                {"name": "芦丹氏玻璃纸之夜（八月夜桂）"},
+                {"name": "徕汀霍斯卡蓝"},
+                {"name": "潘海利根牧羊少年EDP"},
+                {"name": "潘海利根琴酒（杜松司令）EDT"},
+                {"name": "SMN鸢尾"},
+                {"name": "梵诗柯香MFK晶红540香精"},
+                {"name": "弗拉潘炽木"},
+                {"name": "蒂普提克杜桑晚香玉EDP"},
+                {"name": "俾你乜是但求其"},
+                {"name": "俾你乜落班之后"},
+                {"name": "娇兰柑橘罗勒"},
+                {"name": "TDC白扎戈拉"},
+                {"name": "蒂普提克无花果EDT"},
+                {"name": "蒙大拿红宝石3号"},
+                {"name": "蔻依木兰诗语"},
+                {"name": "ALTERNATIVE LAB黑色花谷"},
+                {"name": "阿曼奢华Mariya"},
+                {"name": "阿曼奢华Wanderlust"},
+                {"name": "阿曼奢华Oud Aquilaria"},
+                {"name": "阿曼奢华Overdose"},
+                {"name": "蝴蝶工匠树妖Dryad"},
+                {"name": "蝴蝶工匠阿努比斯Anubis"},
+                {"name": "蝴蝶工匠烟草玫瑰Tobacco Rose"},
+                {"name": "门蒂托洛萨天狼星Sirio"},
+                {"name": "门蒂托洛萨人才"},
+                {"name": "门蒂托洛萨愚人"},
+                {"name": "tf黑之黑"},
+                {"name": "爱慕化蝶女"},
+                {"name": "爱慕迪亚女"},
+                {"name": "lelabo檀木33"},
+                {"name": "芦丹氏乳牙"},
+                {"name": "杰弗里灰色法兰绒"},
+                {"name": "蒂普提克漩涡edp"},
+                {"name": "帕尔马之水桃金娘加州桂"},
+                {"name": "柏氛602胡椒、雪松与广藿香"},
+                {"name": "面具等待"},
+                {"name": "面具爱情杀戮"},
+                {"name": "米欧法修尼小歌"},
+                {"name": "米欧法修尼#2旅行笔记：谢谢"},
+                {"name": "艾利斯布鲁克林神话"},
+                {"name": "SMN小苍兰"},
+                {"name": "馥马尔香水出版社法国情人"},
+                {"name": "奥比维斯抹茶"},
+                {"name": "卡朗白色烟草"},
+                {"name": "梅森马吉拉鲜花市场"},
+                {"name": "凯利安天使之享微醺版"},
+                {"name": "纳西索黑瓶For Her她的同名女士淡香水"},
+                {"name": "纳西索柔雾迷情"},
+                {"name": "萨那花园金发柏柏尔人"},
+                {"name": "古特尔火焰乳香"},
+                {"name": "娇兰土耳其玫瑰"},
+                {"name": "馥马尔香水出版社狂野麝香"},
+                {"name": "馥马尔香水出版社不羁香根草"},
+                {"name": "香奈儿巴黎-巴黎"},
+                {"name": "尼可莱紫罗兰的爱"},
+                {"name": "银杉鸢尾丛"},
+                {"name": "浪凡琶音"},
+                {"name": "尼可莱纽约"},
+                {"name": "雅克罗幻雾"},
+                {"name": "尼可莱宫娥"},
+                {"name": "米勒海莉诗秘密花园"},
+                {"name": "配枪朱丽叶复仇女神"},
+                {"name": "SMN玫瑰"},
+                {"name": "潘海利根狐狸"},
+                {"name": "门蒂托洛萨北方"},
+                {"name": "门蒂托洛萨圣意"},
+                {"name": "杜加尔密西西比医学"},
+                {"name": "杜加尔德巴瑟"},
+                {"name": "尼古莱沙漠驿站"},
+                {"name": "威尼斯商人安达卢西亚之魂"},
+                {"name": "爱慕黄金女"},
+                {"name": "爱慕蜿蜒"},
+                {"name": "翡冷翠之香黑郁金香"},
+                {"name": "弗拉潘1270"},
+                {"name": "杰奎斯菲斯失乐园"},
+                {"name": "卡普里岛特拉米亚"},
+                {"name": "臆想作家燃烧的城市"},
+                {"name": "YSL红丝绒"},
+                {"name": "阿蒂仙小偷玫瑰"},
+                {"name": "柔山白与白芷"},
+                {"name": "柔山亿万富翁"},
+                {"name": "爱绰虚幻宫殿"},
+                {"name": "阿特金森梅菲尔的金色舞会"},
+                {"name": "爱马仕尼罗河花园"},
+                {"name": "阿特金森玫瑰梦境"},
+                {"name": "阿特金森阿特金森 无根之水"},
+                {"name": "阿特金森挚爱捧花语"},
+                {"name": "尼古莱粉缎麝香精粹"}
+            ];
+            
+            // 显示香水总数
+            perfumeCount.textContent = perfumes.length;
+            
+            // 开始抽取（现在可以重复使用同一个按钮）
+            drawBtn.addEventListener('click', function() {
+                // 隐藏结果，显示加载动画
+                resultSection.style.display = 'none';
+                loading.style.display = 'block';
+                drawBtn.disabled = true; // 在加载时禁用按钮，防止重复点击
+
+                // 模拟抽取过程（添加一点延迟增强体验）
+                setTimeout(function() {
+                    // 随机选择一款香水
+                    const randomIndex = Math.floor(Math.random() * perfumes.length);
+                    const selectedPerfume = perfumes[randomIndex].name;
+
+                    // 更新结果显示
+                    perfumeName.textContent = selectedPerfume;
+
+                    // 隐藏加载动画，显示结果（使用 flex 居中），重新启用按钮
+                    loading.style.display = 'none';
+                    resultSection.style.display = 'flex';
+                    drawBtn.disabled = false;
+                }, 200);
+            });
+        });
+    </script>
+</body>
+</html>
